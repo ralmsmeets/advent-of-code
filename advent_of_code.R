@@ -343,3 +343,115 @@ exitNewSteps <- function(vector){
 }
 
 exitNewSteps(actualVec)
+
+# Dec 6th
+
+memoryDistribution <- function(memorybank){
+  
+  seenBefore <- F
+  distributionRound <- 0
+  compositionHistory <- list(memorybank)
+  
+  while (seenBefore == F){
+    
+    memoryStash <- max(memorybank)
+    startIndex  <- which(memorybank==memoryStash)
+    if (length(startIndex)>1){
+      startIndex <- min(startIndex)
+    }
+    memorybank[startIndex] <- 0
+    index <- startIndex + 1
+    
+    while (memoryStash > 0){
+      if (!is.na(memorybank[index])){
+        memorybank[index] <- memorybank[index]+1
+        memoryStash <- memoryStash-1
+        index <- index + 1
+      }
+      else{
+        memorybank[1] <- memorybank[1]+1
+        memoryStash <- memoryStash-1
+        index <- 2
+      }
+    }
+    
+    distributionRound <- distributionRound+1
+    
+    for (i in seq_along(compositionHistory)){
+      if (all(memorybank == compositionHistory[[i]])){
+        seenBefore <- T
+      }
+    }
+    
+    compositionHistoryIndex <- distributionRound + 1
+    compositionHistory[[compositionHistoryIndex]] <- memorybank 
+  }
+  
+  return(distributionRound)
+}
+
+testVec <- c(0,2,7,0)
+memoryDistribution(testVec)
+
+realVec <- as.numeric(fread('/Users/rogersmeets/Documents/adventofcode/day6_input.txt'))
+memoryDistribution(realVec)
+
+
+
+newMemoryDistribution <- function(memorybank){
+  
+  seenBefore <- F
+  seenAgain <- F
+  distributionRound <- 0
+  compositionHistory <- list(memorybank)
+  
+  while (seenAgain == F){
+    
+    memoryStash <- max(memorybank)
+    startIndex  <- which(memorybank==memoryStash)
+    if (length(startIndex)>1){
+      startIndex <- min(startIndex)
+    }
+    memorybank[startIndex] <- 0
+    index <- startIndex + 1
+    
+    while (memoryStash > 0){
+      if (!is.na(memorybank[index])){
+        memorybank[index] <- memorybank[index]+1
+        memoryStash <- memoryStash-1
+        index <- index + 1
+      }
+      else{
+        memorybank[1] <- memorybank[1]+1
+        memoryStash <- memoryStash-1
+        index <- 2
+      }
+    }
+    
+    distributionRound <- distributionRound+1
+    
+    if (seenBefore == F){
+      for (i in seq_along(compositionHistory)){
+        if (all(memorybank == compositionHistory[[i]])){
+          seenBefore <- T
+          newComparison <- memorybank
+          distributionRound <- 0
+        }
+      }
+    }
+    else{
+      if (all(memorybank == newComparison)){
+        seenAgain <- T
+      }
+    }
+    
+    compositionHistoryIndex <- distributionRound + 1
+    compositionHistory[[compositionHistoryIndex]] <- memorybank 
+  }
+  
+  return(distributionRound)
+}
+
+testVec <- c(0,2,7,0)
+newMemoryDistribution(testVec)
+newMemoryDistribution(realVec)
