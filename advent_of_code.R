@@ -455,3 +455,189 @@ newMemoryDistribution <- function(memorybank){
 testVec <- c(0,2,7,0)
 newMemoryDistribution(testVec)
 newMemoryDistribution(realVec)
+
+# Dec 7th
+
+testVec <- c(
+  "pbga (66)",
+  "xhth (57)",
+  "ebii (61)",
+  "havc (66)",
+  "ktlj (57)",
+  "fwft (72) -> ktlj, cntj, xhth",
+  "qoyq (66)",
+  "padx (45) -> pbga, havc, qoyq",
+  "tknk (41) -> ugml, padx, fwft",
+  "jptl (61)",
+  "ugml (68) -> gyxo, ebii, jptl",
+  "gyxo (61)",
+  "cntj (57)"
+)
+
+findRoot <- function(vector){
+  vecClean <- sapply(vector, function(x){strsplit(x, split = " -> ")})
+  leftColumn <- as.character(unlist(lapply(vecClean, function(x){x[1]})))
+  rightColumn <- as.character(unlist(lapply(vecClean, function(x){x[2]})))
+  
+  leftColumnTextOnly <- gsub("\\s\\(\\d.*\\)","",leftColumn)
+  rightColumnTextOnly <- unlist(strsplit(unlist(rightColumn),split=","))
+  rightColumnTextOnly <- gsub("\\s","",rightColumnTextOnly)
+  rightColumnTextOnly <- rightColumnTextOnly[!is.na(rightColumnTextOnly)]
+  
+  return(setdiff(leftColumnTextOnly, rightColumnTextOnly))
+}
+
+realVec <- readLines('/Users/rogersmeets/Documents/adventofcode/day7_input.txt')
+
+findRoot(realVec)
+ 
+
+findLeafNodes <- function(vector){
+  vecClean <- sapply(vector, function(x){strsplit(x, split = " -> ")})
+  leftColumn <- as.character(unlist(lapply(vecClean, function(x){x[1]})))
+  rightColumn <- as.character(unlist(lapply(vecClean, function(x){x[2]})))
+  
+  leftColumnTextOnly <- gsub("\\s\\(\\d.*\\)","",leftColumn)
+  leafs <- leftColumnTextOnly[which(is.na(rightColumn))]
+  
+  rightColumnSplit <- strsplit(rightColumn,split=", ")
+  leafIndices <- sapply(rightColumnSplit, function(x){all(x %in% leafs)})
+  
+  #return(rightColumn[leafIndices])
+  return(list(rightColumn[leafIndices], leafIndices))
+}
+
+getWeightList <- function(vector){
+  vecClean <- sapply(vector, function(x){strsplit(x, split = " -> ")})
+  leftColumn <- as.character(unlist(lapply(vecClean, function(x){x[1]})))
+  leftColumnTextOnly <- gsub("\\s\\(\\d.*\\)","",leftColumn)
+  
+  weightList <- as.list(as.numeric(gsub("\\D","",leftColumn)))
+  names(weightList) <- leftColumnTextOnly
+  
+  return(weightList)
+}
+
+getElementWeight <- function(weightlist, element){
+  
+  return(weightlist[[element]])
+}
+
+computeDishWeight <- function(dish, weightlist){
+  
+  theElements <- unlist(strsplit(dish,split=", "))
+  
+  return(sapply(theElements, getElementWeight, weightlist = weightlist))
+}
+
+checkBalance <- function(weightvector){
+  
+  return(all(sum(weightvector)/length(weightvector)==weightvector))
+}
+
+updateElementWeight <- function(elementweights, dishweights, vector){
+  
+  vecClean <- sapply(vector, function(x){strsplit(x, split = " -> ")})
+  leftColumn <- as.character(unlist(lapply(vecClean, function(x){x[1]})))
+  rightColumn <- as.character(unlist(lapply(vecClean, function(x){x[2]})))
+  leftColumnTextOnly <- gsub("\\s\\(\\d.*\\)","",leftColumn)
+  
+  updateIndices <- sapply(dishweights, function(x){which(rightColumn %in% paste(names(x), collapse=", "))})
+  totalDishWeights <- sapply(dishweights, sum)
+  
+  sapply(seq(1,length(updateIndices)), function(x){elementweights[updateIndices[x]] <<-
+    elementweights[[updateIndices[x]]] + totalDishWeights[x]})
+  
+  return(elementweights)
+}
+
+updateVector <- function(vector, oldleafindices){
+  
+  updateIndices <- which(oldleafindices == T)
+  sapply(updateIndices, function(x){vector[x] <<- gsub("\\s->.*","",vector[x])})
+  
+  return(vector)
+}
+
+findImbalance <- function(vector){
+  
+  originalWeights <- getWeightList(vector)
+  newWeights <- originalWeights
+  theBalance <- T
+  
+  while (theBalance == T){
+    leafVec <- findLeafNodes(vector)
+    dishWeights <- lapply(leafVec[[1]], computeDishWeight, weightlist = newWeights)
+    dishBalance <- lapply(dishWeights, checkBalance)
+    
+    theBalance <- all(unlist(dishBalance))
+    if (theBalance == F){
+      
+      getIndex <- which(dishBalance == F)
+      problemLevel <- dishWeights[getIndex]
+      
+      uniqueValues <- table(problemLevel[[1]])
+      offWeight <- as.numeric(names(which(uniqueValues==1)))
+      onWeight <- as.numeric(names(which(uniqueValues!=1)))
+      weightDiff <- onWeight - offWeight
+      
+      offElement <- names(which(problemLevel[[1]]==offWeight))
+      
+      newElementWeight <- as.numeric(originalWeights[offElement])+weightDiff
+      break
+    }
+    
+    newWeights <- updateElementWeight(newWeights, dishWeights, vector)
+    vector <- updateVector(vector, leafVec[[2]])
+  }
+  
+  return(newElementWeight)
+}
+
+# Dec 8th
+
+testRegister <- c(
+  "b inc 5 if a > 1",
+  "a inc 1 if b < 5",
+  "c dec -10 if a >= 1",
+  "c inc -20 if c == 10"
+)
+
+executeInstruction <- function(instruction){
+  
+  parsedInstruction <- strsplit(instruction, split = " ")
+
+  changeIndex <- paste0('theRegister$',parsedInstruction[[1]][1])
+  operation <- ifelse(parsedInstruction[[1]][2] == "inc", "+", "-")
+  changeValue <- parsedInstruction[[1]][3]
+  conditionIndex <- paste0('theRegister$',parsedInstruction[[1]][5])
+  conditionOperation <- parsedInstruction[[1]][6]
+  conditionValue <- parsedInstruction[[1]][7]
+  
+  theInstruction <- paste(changeIndex,'<<- ifelse(',conditionIndex,conditionOperation,conditionValue,',',changeIndex,operation,changeValue,',',changeIndex,')')
+  return(theInstruction)
+}
+
+createRegister <- function(instructionList){
+    
+  allInstructionIndices <- unique(sapply(instructionList, parseInstruction)[1,])
+  
+  theRegister <- as.list(rep(0, length(allInstructionIndices)))
+  names(theRegister) <- allInstructionIndices
+  
+  return(theRegister)
+}
+
+findMaxRegister <- function(instructionlist){
+  
+  theRegister <- createRegister(instructionlist)
+  newValues <- lapply(instructionlist, function(x){eval(parse(text=executeInstruction(x)))})
+  
+  return(c(max(unlist(theRegister)), max(unlist(newValues))))
+}
+
+findMaxRegister(testRegister)
+
+realRegister <- readLines('/Users/rogersmeets/Documents/adventofcode/day8_input.txt')
+
+findMaxRegister(realRegister)
